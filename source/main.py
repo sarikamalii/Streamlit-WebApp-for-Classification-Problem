@@ -19,7 +19,7 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("No Code ML Model Training")
+st.title("Automate ML")
 
 dataset_list = os.listdir(f"{parent_dir}/Data")
 

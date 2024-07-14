@@ -18,7 +18,7 @@ parent_dir = os.path.dirname(working_dir)
 
 # Step 1: Read the data
 def read_data(file_name):
-    file_path = f"{parent_dir}/data/{file_name}"
+    file_path = f"{parent_dir}/Data/{file_name}"
     if file_path.endswith('.csv'):
         df = pd.read_csv(file_path)
         return df

@@ -21,7 +21,7 @@ st.set_page_config(
 
 st.title("No Code ML Model Training")
 
-dataset_list = os.listdir(f"{parent_dir}/data")
+dataset_list = os.listdir(f"{parent_dir}/Data")
 
 dataset = st.selectbox("Select a dataset from the dropdown", dataset_list, index=None)
 

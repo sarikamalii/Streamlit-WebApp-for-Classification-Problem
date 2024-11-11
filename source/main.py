@@ -1,65 +1,43 @@
-import os
+
 import streamlit as st
-from streamlit_option_menu import option_menu
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-
-from ml_utility import (read_data, preprocess_data, train_model, evaluate_model)
-
-# Get the working directory of the main.py file
-working_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Get the parent directory
-parent_dir = os.path.dirname(working_dir)
-
-st.set_page_config(
-    page_title="Automate ML",
-    layout="centered"
+import pandas as pd
+from ml_utils import (
+    load_data,
+    eda_summary,
+    preprocess_data,
+    train_and_evaluate_models
 )
 
-st.title("Classification Model Training")
+# Page setup
+st.set_page_config(page_title="Classification App", layout="wide")
+st.title("Classification Model Comparison")
 
-dataset_list = os.listdir(f"{parent_dir}/Data")
+# Sidebar for file upload
+st.sidebar.header("1. Upload Data")
+uploaded_file = st.sidebar.file_uploader("Upload your CSV file", type="csv")
 
-dataset = st.selectbox("Select a dataset from the dropdown", dataset_list, index=None)
+if uploaded_file:
+    data = load_data(uploaded_file)
+    st.write("### Dataset Preview")
+    st.write(data.head())
 
-df = read_data(dataset)
+    # Step 2: EDA
+    st.sidebar.header("2. Exploratory Data Analysis")
+    if st.sidebar.button("Perform EDA"):
+        st.write("### EDA Summary")
+        eda_summary(data)
 
-if df is not None:
-    st.dataframe(df.head())
+    # Step 3: Preprocessing Options
+    st.sidebar.header("3. Preprocessing")
+    scaling = st.sidebar.selectbox("Scaling Method", ["None", "Standard", "MinMax"])
+    processed_data = preprocess_data(data, scaling_method=scaling)
 
-    col1, col2, col3, col4 = st.columns(4)
+    # Step 4: Model Training and Evaluation
+    st.sidebar.header("4. Model Training")
+    if st.sidebar.button("Train & Evaluate Models"):
+        st.write("### Model Performance Metrics")
+        results = train_and_evaluate_models(processed_data)
+        st.write(results)
 
-    scaler_type_list = ["standard", "minmax"]
-
-    model_dictionary = {
-        "Logistic Regression": LogisticRegression(),
-        "Random Forest Classifier": RandomForestClassifier(),
-        "Decision Tree Classifier": DecisionTreeClassifier(),
-        "KNN Classifier": KNeighborsClassifier()
-    }
-
-    with col1:
-        target_column = st.selectbox("Select the Target Column", list(df.columns))
-    with col2:
-        scaler_type = st.selectbox("Select a scaler", scaler_type_list)
-    with col3:
-        selected_model = st.selectbox("Select a Model", list(model_dictionary.keys()))
-    with col4:
-        model_name = st.text_input("Model name")
-
-    if st.button("Train the Model"):
-        X_train, X_test, y_train, y_test = preprocess_data(df, target_column, scaler_type)
-
-        model_to_be_trained = model_dictionary[selected_model]
-
-        model = train_model(X_train, y_train, model_to_be_trained, model_name)
-
-        accuracy, precision, recall, f1 = evaluate_model(model, X_test, y_test)
-
-        st.success(f"Test Accuracy: {accuracy}")
-        st.success(f"Precision: {precision}")
-        st.success(f"Recall: {recall}")
-        st.success(f"F1 Score: {f1}")
+else:
+    st.info("Please upload a dataset to get started.")

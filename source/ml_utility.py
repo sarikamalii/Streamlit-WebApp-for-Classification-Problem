@@ -22,7 +22,7 @@ def eda_summary(data):
     st.write("Missing Values Before Treatment:")
     st.write(data.isnull().sum())
 
-def preprocess_data(data, scaling_method="Standard", treat_outliers=False):
+def preprocess_data(data, scaling_method="Standard", treat_outliers=False, target_column="loan_status"):
     # Copy of the original data before any changes
     data_before = data.copy()
 
@@ -46,19 +46,20 @@ def preprocess_data(data, scaling_method="Standard", treat_outliers=False):
         label_encoders[column] = LabelEncoder()
         data[column] = label_encoders[column].fit_transform(data[column])
 
-    # Outlier treatment if selected
+    # Outlier treatment on all features except the target column
     if treat_outliers:
-        X = data.iloc[:, :-1]
+        X = data.drop(columns=[target_column])
         Q1 = X.quantile(0.25)
         Q3 = X.quantile(0.75)
         IQR = Q3 - Q1
+        # Remove rows where outliers are found in any feature (excluding target column)
         X_outliers_removed = X[~((X < (Q1 - 1.5 * IQR)) | (X > (Q3 + 1.5 * IQR))).any(axis=1)]
-        y_outliers_removed = data.iloc[X_outliers_removed.index, -1]
+        y_outliers_removed = data.loc[X_outliers_removed.index, target_column]
         data = X_outliers_removed.join(y_outliers_removed)
         st.write("Outliers Removed:", X.shape[0] - X_outliers_removed.shape[0], "rows removed.")
     
-    X = data.iloc[:, :-1]
-    y = data.iloc[:, -1]
+    X = data.drop(columns=[target_column])
+    y = data[target_column]
 
     # Scaling
     if scaling_method == "Standard":
@@ -93,16 +94,16 @@ def train_and_evaluate_models(X_train, y_train, X_test, y_test):
 
     return pd.DataFrame(results)
 
-def compare_with_without_outliers(data):
+def compare_with_without_outliers(data, target_column="loan_status"):
     # Without outlier treatment
-    X_no_outliers, y_no_outliers = preprocess_data(data.copy(), treat_outliers=False)
+    X_no_outliers, y_no_outliers = preprocess_data(data.copy(), treat_outliers=False, target_column=target_column)
     X_train_no, X_test_no, y_train_no, y_test_no = train_test_split(X_no_outliers, y_no_outliers, test_size=0.3, random_state=42)
     results_no_outliers = train_and_evaluate_models(X_train_no, y_train_no, X_test_no, y_test_no)
     st.write("Results without Outlier Treatment")
     st.dataframe(results_no_outliers)
 
     # With outlier treatment
-    X_with_outliers, y_with_outliers = preprocess_data(data.copy(), treat_outliers=True)
+    X_with_outliers, y_with_outliers = preprocess_data(data.copy(), treat_outliers=True, target_column=target_column)
     X_train_with, X_test_with, y_train_with, y_test_with = train_test_split(X_with_outliers, y_with_outliers, test_size=0.3, random_state=42)
     results_with_outliers = train_and_evaluate_models(X_train_with, y_train_with, X_test_with, y_test_with)
     st.write("Results with Outlier Treatment")

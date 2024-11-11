@@ -1,7 +1,7 @@
 
 import streamlit as st
 import pandas as pd
-from ml_utils import (
+from ml_utility import (
     load_data,
     eda_summary,
     preprocess_data,

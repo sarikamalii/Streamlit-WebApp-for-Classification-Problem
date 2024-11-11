@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -19,12 +19,11 @@ def eda_summary(data):
     st.write("Shape of data:", data.shape)
     st.write("Data Types:\n", data.dtypes)
     st.write("Class Distribution:\n", data.iloc[:, -1].value_counts())
-
-    # Display missing values before treatment
     st.write("Missing Values Before Treatment:")
     st.write(data.isnull().sum())
 
-def preprocess_data(data, scaling_method="None", treat_outliers=False):
+def preprocess_data(data, scaling_method="Standard", treat_outliers=False):
+    # Copy of the original data before any changes
     data_before = data.copy()
 
     # Handling missing values: fill with median for numerical, mode for categorical
@@ -34,14 +33,10 @@ def preprocess_data(data, scaling_method="None", treat_outliers=False):
         else:
             data[column].fillna(data[column].median(), inplace=True)
 
-    # Display missing values after treatment
     st.write("Missing Values After Treatment:")
     st.write(data.isnull().sum())
-
-    # Show dataset before and after missing value treatment
     st.write("Dataset Before Missing Value Treatment:")
     st.dataframe(data_before.head())
-    
     st.write("Dataset After Missing Value Treatment:")
     st.dataframe(data.head())
 
@@ -54,23 +49,20 @@ def preprocess_data(data, scaling_method="None", treat_outliers=False):
     # Outlier treatment if selected
     if treat_outliers:
         X = data.iloc[:, :-1]
-        # Identifying and treating outliers using IQR (Interquartile Range)
         Q1 = X.quantile(0.25)
         Q3 = X.quantile(0.75)
         IQR = Q3 - Q1
         X_outliers_removed = X[~((X < (Q1 - 1.5 * IQR)) | (X > (Q3 + 1.5 * IQR))).any(axis=1)]
         y_outliers_removed = data.iloc[X_outliers_removed.index, -1]
         data = X_outliers_removed.join(y_outliers_removed)
-        st.write("Outliers Removed: ", X.shape[0] - X_outliers_removed.shape[0], "rows removed.")
-    else:
-        X = data.iloc[:, :-1]
-        y = data.iloc[:, -1]
+        st.write("Outliers Removed:", X.shape[0] - X_outliers_removed.shape[0], "rows removed.")
+    
+    X = data.iloc[:, :-1]
+    y = data.iloc[:, -1]
 
     # Scaling
     if scaling_method == "Standard":
         scaler = StandardScaler()
-    elif scaling_method == "MinMax":
-        scaler = MinMaxScaler()
     else:
         scaler = None
 
@@ -79,10 +71,7 @@ def preprocess_data(data, scaling_method="None", treat_outliers=False):
 
     return X, y
 
-def train_and_evaluate_models(data, treat_outliers=False):
-    X, y = data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
+def train_and_evaluate_models(X_train, y_train, X_test, y_test):
     models = {
         "KNN": KNeighborsClassifier(),
         "Decision Tree": DecisionTreeClassifier(),
@@ -104,3 +93,19 @@ def train_and_evaluate_models(data, treat_outliers=False):
 
     return pd.DataFrame(results)
 
+def compare_with_without_outliers(data):
+    # Without outlier treatment
+    X_no_outliers, y_no_outliers = preprocess_data(data.copy(), treat_outliers=False)
+    X_train_no, X_test_no, y_train_no, y_test_no = train_test_split(X_no_outliers, y_no_outliers, test_size=0.3, random_state=42)
+    results_no_outliers = train_and_evaluate_models(X_train_no, y_train_no, X_test_no, y_test_no)
+    st.write("Results without Outlier Treatment")
+    st.dataframe(results_no_outliers)
+
+    # With outlier treatment
+    X_with_outliers, y_with_outliers = preprocess_data(data.copy(), treat_outliers=True)
+    X_train_with, X_test_with, y_train_with, y_test_with = train_test_split(X_with_outliers, y_with_outliers, test_size=0.3, random_state=42)
+    results_with_outliers = train_and_evaluate_models(X_train_with, y_train_with, X_test_with, y_test_with)
+    st.write("Results with Outlier Treatment")
+    st.dataframe(results_with_outliers)
+    
+    return results_no_outliers, results_with_outliers

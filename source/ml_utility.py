@@ -9,6 +9,15 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import streamlit as st
 
+# Function to load data
+def load_data(file_path):
+    try:
+        data = pd.read_csv(file_path)
+        return data
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return None
+
 # Preprocessing function with missing value and outlier handling
 def preprocess_data(data, treat_outliers=True, target_column="Loan_Status"):
     st.write("### Data before Missing Value Treatment")

@@ -96,17 +96,12 @@ def train_and_evaluate_models(X_train, y_train, X_test, y_test):
 
 def compare_with_without_outliers(data, target_column="loan_status"):
     # Without outlier treatment
-    X_no_outliers, y_no_outliers = preprocess_data(data.copy(), treat_outliers=False, target_column=target_column)
-    X_train_no, X_test_no, y_train_no, y_test_no = train_test_split(X_no_outliers, y_no_outliers, test_size=0.3, random_state=42)
-    results_no_outliers = train_and_evaluate_models(X_train_no, y_train_no, X_test_no, y_test_no)
-    st.write("Results without Outlier Treatment")
-    st.dataframe(results_no_outliers)
+X_no_outliers, y_no_outliers = preprocess_data(data.copy(), treat_outliers=False, target_column="Loan_Status")
+X_train_no, X_test_no, y_train_no, y_test_no = train_test_split(X_no_outliers, y_no_outliers, test_size=0.3, random_state=42)
+results_no_outliers = train_and_evaluate_models(X_train_no, y_train_no, X_test_no, y_test_no)
 
-    # With outlier treatment
-    X_with_outliers, y_with_outliers = preprocess_data(data.copy(), treat_outliers=True, target_column=target_column)
-    X_train_with, X_test_with, y_train_with, y_test_with = train_test_split(X_with_outliers, y_with_outliers, test_size=0.3, random_state=42)
-    results_with_outliers = train_and_evaluate_models(X_train_with, y_train_with, X_test_with, y_test_with)
-    st.write("Results with Outlier Treatment")
-    st.dataframe(results_with_outliers)
+X_with_outliers, y_with_outliers = preprocess_data(data.copy(), treat_outliers=True, target_column="Loan_Status")
+X_train_with, X_test_with, y_train_with, y_test_with = train_test_split(X_with_outliers, y_with_outliers, test_size=0.3, random_state=42)
+results_with_outliers = train_and_evaluate_models(X_train_with, y_train_with, X_test_with, y_test_with)
     
     return results_no_outliers, results_with_outliers

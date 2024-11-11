@@ -1,98 +1,106 @@
-import os
-import pickle
+# ml_utils.py
+import streamlit as st
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
-from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, LabelEncoder
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import numpy as np
 
-# Get the working directory of the main.py file
-working_dir = os.path.dirname(os.path.abspath(__file__))
+def load_data(file):
+    return pd.read_csv(file)
 
-# Get the parent directory
-parent_dir = os.path.dirname(working_dir)
+def eda_summary(data):
+    st.write("Shape of data:", data.shape)
+    st.write("Data Types:\n", data.dtypes)
+    st.write("Class Distribution:\n", data.iloc[:, -1].value_counts())
 
-# Step 1: Read the data
-def read_data(file_name):
-    file_path = f"{parent_dir}/Data/{file_name}"
-    if file_path.endswith('.csv'):
-        df = pd.read_csv(file_path)
-        return df
-    elif file_path.endswith('.xlsx') or file_path.endswith('.xls'):
-        df = pd.read_excel(file_path)
-        return df
+    # Display missing values before treatment
+    st.write("Missing Values Before Treatment:")
+    st.write(data.isnull().sum())
 
-# Step 2: Preprocess the data
-def preprocess_data(df, target_column, scaler_type):
-    # Split features and target
-    X = df.drop(columns=[target_column])
-    y = df[target_column]
+def preprocess_data(data, scaling_method="None", treat_outliers=False):
+    data_before = data.copy()
 
-    # Check if there are only numerical or categorical columns
-    numerical_cols = X.select_dtypes(include=['number']).columns
-    categorical_cols = X.select_dtypes(include=['object', 'category']).columns
+    # Handling missing values: fill with median for numerical, mode for categorical
+    for column in data.columns:
+        if data[column].dtype == "object":
+            data[column].fillna(data[column].mode()[0], inplace=True)
+        else:
+            data[column].fillna(data[column].median(), inplace=True)
 
-    if len(numerical_cols) > 0:
-        # Split data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Display missing values after treatment
+    st.write("Missing Values After Treatment:")
+    st.write(data.isnull().sum())
 
-        # Impute missing values for numerical columns (mean imputation)
-        num_imputer = SimpleImputer(strategy='mean')
-        X_train[numerical_cols] = num_imputer.fit_transform(X_train[numerical_cols])
-        X_test[numerical_cols] = num_imputer.transform(X_test[numerical_cols])
-
-        # Scale the numerical features based on scaler_type
-        if scaler_type == 'standard':
-            scaler = StandardScaler()
-        elif scaler_type == 'minmax':
-            scaler = MinMaxScaler()
-
-        X_train[numerical_cols] = scaler.fit_transform(X_train[numerical_cols])
-        X_test[numerical_cols] = scaler.transform(X_test[numerical_cols])
-
-    if len(categorical_cols) > 0:
-        # Impute missing values for categorical columns (mode imputation)
-        cat_imputer = SimpleImputer(strategy='most_frequent')
-        X_train[categorical_cols] = cat_imputer.fit_transform(X_train[categorical_cols])
-        X_test[categorical_cols] = cat_imputer.transform(X_test[categorical_cols])
-
-        # One-hot encode categorical features
-        encoder = OneHotEncoder()
-        X_train_encoded = encoder.fit_transform(X_train[categorical_cols])
-        X_test_encoded = encoder.transform(X_test[categorical_cols])
-        X_train_encoded = pd.DataFrame(X_train_encoded.toarray(), columns=encoder.get_feature_names_out(categorical_cols))
-        X_test_encoded = pd.DataFrame(X_test_encoded.toarray(), columns=encoder.get_feature_names_out(categorical_cols))
-        X_train = pd.concat([X_train.drop(columns=categorical_cols), X_train_encoded], axis=1)
-        X_test = pd.concat([X_test.drop(columns=categorical_cols), X_test_encoded], axis=1)
-
-    return X_train, X_test, y_train, y_test
-
-# Step 3: Train the model
-def train_model(X_train, y_train, model, model_name):
-    # training the selected model
-    model.fit(X_train, y_train)
+    # Show dataset before and after missing value treatment
+    st.write("Dataset Before Missing Value Treatment:")
+    st.dataframe(data_before.head())
     
-    # create directory if it does not exist
-    model_dir = f"{parent_dir}/trained_model"
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
-    
-    # saving the trained model
-    model_path = os.path.join(model_dir, f"{model_name}.pkl")
-    with open(model_path, 'wb') as file:
-        pickle.dump(model, file)
-    
-    return model
+    st.write("Dataset After Missing Value Treatment:")
+    st.dataframe(data.head())
 
-# Step 4: Evaluate the model
-def evaluate_model(model, X_test, y_test):
-    y_pred = model.predict(X_test)
-    accuracy = round(accuracy_score(y_test, y_pred), 2)
-    precision = round(precision_score(y_test, y_pred, average='weighted'), 2)
-    recall = round(recall_score(y_test, y_pred, average='weighted'), 2)
-    f1 = round(f1_score(y_test, y_pred, average='weighted'), 2)
-    return accuracy, precision, recall, f1
+    # Encoding categorical columns
+    label_encoders = {}
+    for column in data.select_dtypes(include="object").columns:
+        label_encoders[column] = LabelEncoder()
+        data[column] = label_encoders[column].fit_transform(data[column])
+
+    # Outlier treatment if selected
+    if treat_outliers:
+        X = data.iloc[:, :-1]
+        # Identifying and treating outliers using IQR (Interquartile Range)
+        Q1 = X.quantile(0.25)
+        Q3 = X.quantile(0.75)
+        IQR = Q3 - Q1
+        X_outliers_removed = X[~((X < (Q1 - 1.5 * IQR)) | (X > (Q3 + 1.5 * IQR))).any(axis=1)]
+        y_outliers_removed = data.iloc[X_outliers_removed.index, -1]
+        data = X_outliers_removed.join(y_outliers_removed)
+        st.write("Outliers Removed: ", X.shape[0] - X_outliers_removed.shape[0], "rows removed.")
+    else:
+        X = data.iloc[:, :-1]
+        y = data.iloc[:, -1]
+
+    # Scaling
+    if scaling_method == "Standard":
+        scaler = StandardScaler()
+    elif scaling_method == "MinMax":
+        scaler = MinMaxScaler()
+    else:
+        scaler = None
+
+    if scaler:
+        X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+
+    return X, y
+
+def train_and_evaluate_models(data, treat_outliers=False):
+    X, y = data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    models = {
+        "KNN": KNeighborsClassifier(),
+        "Decision Tree": DecisionTreeClassifier(),
+        "Logistic Regression": LogisticRegression(),
+        "Random Forest": RandomForestClassifier(),
+    }
+    
+    results = {"Model": [], "Accuracy": [], "Precision": [], "Recall": [], "F1 Score": []}
+
+    for model_name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        
+        results["Model"].append(model_name)
+        results["Accuracy"].append(accuracy_score(y_test, y_pred))
+        results["Precision"].append(precision_score(y_test, y_pred, average='weighted'))
+        results["Recall"].append(recall_score(y_test, y_pred, average='weighted'))
+        results["F1 Score"].append(f1_score(y_test, y_pred, average='weighted'))
+
+    return pd.DataFrame(results)
+

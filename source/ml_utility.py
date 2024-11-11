@@ -22,7 +22,7 @@ def eda_summary(data):
     st.write("Missing Values Before Treatment:")
     st.write(data.isnull().sum())
 
-def preprocess_data(data, scaling_method="Standard", treat_outliers=False, target_column="loan_status"):
+def preprocess_data(data, scaling_method="Standard", treat_outliers=False, target_column="Loan_Status"):
     # Copy of the original data before any changes
     data_before = data.copy()
 
